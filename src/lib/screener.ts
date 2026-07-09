@@ -161,7 +161,7 @@ export function screenKospiCandidates(universe: KospiUniverseEntry[], options: S
   const generatedAt = new Date().toISOString();
   const normalizedSector = options.sector && options.sector !== "전체" ? options.sector : null;
   const sort = options.sort ?? "short";
-  const limit = Math.max(1, Math.min(options.limit ?? 12, 24));
+  const limit = Math.max(1, Math.min(options.limit ?? 12, 20));
 
   const matchedUniverse = normalizedSector ? universe.filter((entry) => entry.sector === normalizedSector) : universe;
   const screened = matchedUniverse.map((entry) => candidateFromUniverse(entry, dataMode));

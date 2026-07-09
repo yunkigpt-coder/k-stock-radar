@@ -1,6 +1,6 @@
 import { findKospiUniverseEntry, kospiUniverse } from "@/data/kospi-universe";
 import { candidateFromUniverse, screenKospiCandidates, type ScreenerSort } from "./screener";
-import { fetchCandidateQuotes, fetchMarketSnapshot } from "./marketData";
+import { fetchMarketSnapshot } from "./marketData";
 import { generateStrategyNarrative } from "./llm";
 import { fetchNaverNews, hasNaverNewsCredentials } from "./newsProvider";
 import { fetchLatestDartDisclosures, hasOpenDartCredentials } from "./dartProvider";
@@ -28,8 +28,6 @@ type EvidenceResult<T> = {
 
 const NONE = "없음";
 const CHART_UNAVAILABLE = "과거 시세 데이터를 불러오지 못했습니다. 현재가만 표시합니다.";
-
-const entryByCode = new Map(kospiUniverse.map((entry) => [entry.code, entry]));
 
 async function fetchNewsEvidence(entry: KospiUniverseEntry): Promise<EvidenceResult<NewsItem>> {
   if (!hasNaverNewsCredentials()) {
@@ -265,26 +263,12 @@ async function fetchSelectedMarketData(company: CompanyAnalysis): Promise<Partia
 }
 
 export async function getRecommendedCandidates(options?: { limit?: number | null; sector?: string | null; sort?: ScreenerSort | null }): Promise<RecommendResponse> {
-  const screened = screenKospiCandidates(kospiUniverse, {
+  return screenKospiCandidates(kospiUniverse, {
     limit: options?.limit,
     sector: options?.sector,
     sort: options?.sort,
-    dataMode: "hybrid"
+    dataMode: "mock"
   });
-
-  const candidates = await fetchCandidateQuotes(
-    screened.candidates.map((candidate) => {
-      const entry = entryByCode.get(candidate.code);
-      return entry ? { ...candidate, name: entry.name, news: [], disclosures: [], newsCount: 0, disclosureCount: 0 } : candidate;
-    }),
-    Math.min(screened.candidates.length, 20)
-  );
-
-  return {
-    ...screened,
-    dataMode: candidates.some((candidate) => candidate.isMarketData) ? "hybrid" : "mock",
-    candidates
-  };
 }
 
 export async function getCompanyResearch(query?: string): Promise<CompanyAnalysis> {

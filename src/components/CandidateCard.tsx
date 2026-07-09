@@ -26,9 +26,11 @@ export function CandidateCard({ candidate, onDetail }: { candidate: CandidateSto
   const hasQuote = Boolean(candidate.isMarketData && candidate.quotePrice && candidate.quotePrice > 0);
   const changeStyle = (candidate.quoteChangeRate ?? candidate.changeRate) >= 0 ? "text-rosewood" : "text-marine";
   const newsCounts = useMemo(() => countSentiments(candidate.news), [candidate.news]);
-  const news48hCount = candidate.news.filter((item) => item.newsRange === "48h").length;
-  const referenceNewsCount = Math.max(0, candidate.news.length - news48hCount);
-  const majorDisclosureCount = candidate.disclosures.filter((item) => item.isMajor).length;
+  const hasNewsEvidence = candidate.news.length > 0;
+  const hasDisclosureEvidence = candidate.disclosures.length > 0;
+  const news48hCount = hasNewsEvidence ? candidate.news.filter((item) => item.newsRange === "48h").length : candidate.newsCount;
+  const referenceNewsCount = hasNewsEvidence ? Math.max(0, candidate.news.length - news48hCount) : 0;
+  const majorDisclosureCount = hasDisclosureEvidence ? candidate.disclosures.filter((item) => item.isMajor).length : candidate.disclosureCount;
   const mainNews = candidate.news.slice(0, 2);
   const mainDisclosure = candidate.disclosures[0];
 
@@ -91,11 +93,13 @@ export function CandidateCard({ candidate, onDetail }: { candidate: CandidateSto
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-xs font-medium text-zinc-500">확인된 뉴스가 없습니다.</p>
+          <p className="mt-2 text-xs font-medium text-zinc-500">Universe 기반 뉴스 신호만 표시합니다.</p>
         )}
-        <button type="button" onClick={() => setNewsOpen(true)} className="mt-3 inline-flex items-center gap-2 rounded-md border border-marine px-3 py-2 text-xs font-bold text-marine transition hover:bg-marine hover:text-white">
-          뉴스 근거 보기
-        </button>
+        {hasNewsEvidence ? (
+          <button type="button" onClick={() => setNewsOpen(true)} className="mt-3 inline-flex items-center gap-2 rounded-md border border-marine px-3 py-2 text-xs font-bold text-marine transition hover:bg-marine hover:text-white">
+            뉴스 근거 보기
+          </button>
+        ) : null}
       </div>
 
       <div className="mt-3 rounded-lg border border-zinc-100 bg-white p-3">
@@ -105,20 +109,22 @@ export function CandidateCard({ candidate, onDetail }: { candidate: CandidateSto
             최신 공시: {candidate.disclosures.length}건 · 주요 공시: {majorDisclosureCount}건
           </p>
         </div>
-        {mainDisclosure ? <p className="mt-2 line-clamp-1 text-xs leading-5 text-zinc-700">- {mainDisclosure.title}</p> : <p className="mt-2 text-xs font-medium text-zinc-500">확인된 DART 공시가 없습니다.</p>}
-        <button type="button" onClick={() => setDartOpen(true)} className="mt-3 inline-flex items-center gap-2 rounded-md border border-marine px-3 py-2 text-xs font-bold text-marine transition hover:bg-marine hover:text-white">
-          공시 근거 보기
-        </button>
+        {mainDisclosure ? <p className="mt-2 line-clamp-1 text-xs leading-5 text-zinc-700">- {mainDisclosure.title}</p> : <p className="mt-2 text-xs font-medium text-zinc-500">Universe 기반 공시 신호만 표시합니다.</p>}
+        {hasDisclosureEvidence ? (
+          <button type="button" onClick={() => setDartOpen(true)} className="mt-3 inline-flex items-center gap-2 rounded-md border border-marine px-3 py-2 text-xs font-bold text-marine transition hover:bg-marine hover:text-white">
+            공시 근거 보기
+          </button>
+        ) : null}
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-semibold text-zinc-600 sm:grid-cols-4">
         <span className="inline-flex items-center gap-1 rounded-md bg-paper px-2 py-2">
           <Newspaper className="h-3.5 w-3.5" />
-          뉴스 {candidate.news.length}
+          뉴스 {candidate.newsCount}
         </span>
         <span className="inline-flex items-center gap-1 rounded-md bg-paper px-2 py-2">
           <FileText className="h-3.5 w-3.5" />
-          공시 {candidate.disclosures.length}
+          공시 {candidate.disclosureCount}
         </span>
         <span className="inline-flex items-center gap-1 rounded-md bg-paper px-2 py-2">
           <Database className="h-3.5 w-3.5" />
