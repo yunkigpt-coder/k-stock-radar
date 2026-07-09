@@ -15,31 +15,22 @@ export const sentimentScore = (sentiment: Sentiment) => {
   return 55;
 };
 
-export function buildScoreBlock(
-  label: string,
-  explanation: string,
-  signals: WeightedSignal[]
-): ScoreBlock {
+export function buildScoreBlock(label: string, explanation: string, signals: WeightedSignal[]): ScoreBlock {
   const weightedSum = signals.reduce((sum, signal) => sum + signal.value * signal.weight, 0);
   const weightTotal = signals.reduce((sum, signal) => sum + signal.weight, 0);
-  const score = clampScore(weightedSum / weightTotal);
+  const score = clampScore(weightedSum / Math.max(weightTotal, 1));
   const breakdown: ScoreBreakdownItem[] = signals.map((signal) => ({
     label: signal.label,
     value: clampScore(signal.value),
     reason: signal.reason
   }));
 
-  return {
-    score,
-    label,
-    explanation,
-    breakdown
-  };
+  return { score, label, explanation, breakdown };
 }
 
 export function scoreTone(score: number) {
-  if (score >= 75) return "긍정 우세";
-  if (score >= 60) return "관심 필요";
+  if (score >= 75) return "긍정 우위";
+  if (score >= 60) return "관찰 필요";
   if (score >= 45) return "중립";
   return "보수적 해석";
 }

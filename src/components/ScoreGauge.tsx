@@ -1,4 +1,4 @@
-import type { ScoreBlock } from "@/lib/types";
+﻿import type { ScoreBlock } from "@/lib/types";
 
 type ScoreGaugeProps = {
   score: number;
@@ -12,6 +12,13 @@ const colors = {
   long: "#59b69b",
   risk: "#b55a61",
   confidence: "#e7a83f"
+};
+
+const defaultLabel = (variant?: ScoreGaugeProps["variant"], fallback?: string) => {
+  if (variant === "short") return "단기 모멘텀";
+  if (variant === "long") return "장기 잠재력";
+  if (variant === "risk") return "리스크";
+  return fallback ?? "점수";
 };
 
 export function ScoreGauge({ score, label, variant = "short", compact = false }: ScoreGaugeProps) {
@@ -37,11 +44,7 @@ export function ScoreGauge({ score, label, variant = "short", compact = false }:
 export function ScorePanel({ score, variant = "short" }: { score: ScoreBlock; variant?: ScoreGaugeProps["variant"] }) {
   return (
     <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
-      <ScoreGauge
-        score={score.score}
-        label={variant === "short" ? "단기 모멘텀" : variant === "long" ? "장기 펀더멘털" : variant === "risk" ? "리스크" : score.label}
-        variant={variant}
-      />
+      <ScoreGauge score={score.score} label={defaultLabel(variant, score.label)} variant={variant} />
       <p className="mt-4 text-sm leading-6 text-zinc-700">{score.explanation}</p>
       <div className="mt-4 space-y-3">
         {score.breakdown.slice(0, 5).map((item) => (

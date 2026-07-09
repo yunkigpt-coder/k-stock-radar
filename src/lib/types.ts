@@ -1,5 +1,6 @@
-export type Sentiment = "positive" | "neutral" | "negative";
+﻿export type Sentiment = "positive" | "neutral" | "negative";
 export type DataMode = "mock" | "hybrid" | "live";
+export type NewsRange = "48h" | "7d" | "30d" | "latest";
 
 export type ScoreBreakdownItem = {
   label: string;
@@ -21,23 +22,39 @@ export type NewsItem = {
   sentiment: Sentiment;
   summary: string;
   url?: string;
+  impactReason?: string;
+  relatedKeywords?: string[];
+  isRecent?: boolean;
+  newsRange?: NewsRange;
+  evidenceSource?: "naver";
 };
 
 export type DisclosureItem = {
   title: string;
+  corpName?: string;
   type: string;
   reportedAt: string;
   sentiment: Sentiment;
   impact: "high" | "medium" | "low";
   summary: string;
   url?: string;
+  impactReason?: string;
+  isMajor?: boolean;
+  evidenceSource?: "opendart";
 };
 
 export type PricePoint = {
   date: string;
+  open?: number;
+  high?: number;
+  low?: number;
   close: number;
   volume: number;
 };
+
+export type ChartDataSource = "actual" | "demo";
+export type PriceDataSource = "mock" | "yahoo" | "api";
+export type ChartStatus = "market" | "unavailable" | "demo";
 
 export type FinancialSnapshot = {
   revenue: string;
@@ -66,6 +83,13 @@ export type SwotAnalysis = {
   threats: string[];
 };
 
+export type StrategyCommentary = {
+  shortTerm: string;
+  longTerm: string;
+  watchPoints: string;
+  dataNote?: string;
+};
+
 export type CompanyAnalysis = {
   name: string;
   code: string;
@@ -91,8 +115,27 @@ export type CompanyAnalysis = {
   disclosures: DisclosureItem[];
   financials: FinancialSnapshot;
   priceHistory: PricePoint[];
+  chartDataSource?: ChartDataSource;
+  chartSource?: string;
+  chartStatus?: ChartStatus;
+  chartDataReason?: string;
+  quotePrice?: number;
+  quoteChangeRate?: number;
+  priceDataSource?: PriceDataSource;
+  priceUpdatedAt?: string;
+  quoteUpdatedAt?: string;
+  quoteSource?: string;
+  isDemoPrice?: boolean;
+  isMarketData?: boolean;
   threeC: ThreeCAnalysis;
   swot: SwotAnalysis;
+  strategyCommentary?: StrategyCommentary;
+  newsStatus?: "market" | "unavailable" | "demo";
+  newsStatusMessage?: string;
+  newsProvider?: "Naver News API" | "없음";
+  dartStatus?: "market" | "unavailable" | "demo";
+  dartStatusMessage?: string;
+  dartProvider?: "OpenDART API" | "없음";
   shortComment: string;
   longComment: string;
   aiCounterOpinion: string[];
@@ -117,6 +160,14 @@ export type CandidateStock = Pick<
   | "majorRisks"
   | "dataMode"
   | "priceHistory"
+  | "priceDataSource"
+  | "priceUpdatedAt"
+  | "quoteSource"
+  | "quotePrice"
+  | "quoteChangeRate"
+  | "quoteUpdatedAt"
+  | "isDemoPrice"
+  | "isMarketData"
 > & {
   newsCount: number;
   disclosureCount: number;
@@ -124,6 +175,8 @@ export type CandidateStock = Pick<
   updatedAt: string;
   confidenceLabel: string;
   confidenceSummary: string;
+  news: NewsItem[];
+  disclosures: DisclosureItem[];
 };
 
 export type RecommendResponse = {

@@ -28,34 +28,36 @@ type SortMode = "short" | "long" | "risk";
 
 const navItems: Array<{ id: View; label: string; icon: LucideIcon }> = [
   { id: "radar", label: "48시간 Radar", icon: Radar },
-  { id: "report", label: "Research Report", icon: FileSearch }
+  { id: "report", label: "리서치 리포트", icon: FileSearch }
 ];
 
 const sortLabels: Record<SortMode, string> = {
-  short: "단기순",
-  long: "장기순",
-  risk: "리스크 낮은순"
+  short: "단기 모멘텀",
+  long: "장기 잠재력",
+  risk: "리스크 낮은 순"
 };
 
+const now = new Date().toISOString();
+
 const emptyAnalysis: CompanyAnalysis = {
-  name: "삼성전자",
-  code: "005930",
-  corpCode: "00593000",
+  name: "SK하이닉스",
+  code: "000660",
+  corpCode: "00066000",
   market: "KOSPI",
   sector: "반도체",
   industry: "메모리 반도체",
-  themeTags: ["AI 메모리", "HBM", "반도체"],
-  currentPrice: 72000,
-  changeRate: 1.8,
-  marketCap: "4,200,000억원",
-  overview: "기본 분석 결과를 불러오는 중입니다.",
+  themeTags: ["AI", "HBM", "반도체"],
+  currentPrice: 0,
+  changeRate: 0,
+  marketCap: "-",
+  overview: "리서치 리포트를 불러오는 중입니다.",
   dataMode: "mock",
-  generatedAt: new Date().toISOString(),
-  confidence: 72,
+  generatedAt: now,
+  confidence: 0,
   confidenceReason: "초기 상태입니다.",
-  shortScore: { score: 68, label: "단기 모멘텀", explanation: "", breakdown: [] },
-  longScore: { score: 78, label: "장기 펀더멘털", explanation: "", breakdown: [] },
-  riskScore: { score: 39, label: "리스크 레벨", explanation: "", breakdown: [] },
+  shortScore: { score: 0, label: "단기 모멘텀", explanation: "", breakdown: [] },
+  longScore: { score: 0, label: "장기 잠재력", explanation: "", breakdown: [] },
+  riskScore: { score: 0, label: "리스크", explanation: "", breakdown: [] },
   keyReasons: [],
   majorRisks: [],
   news: [],
@@ -74,22 +76,46 @@ const emptyAnalysis: CompanyAnalysis = {
     valuationNote: "-"
   },
   priceHistory: [],
+  chartDataSource: "actual",
+  chartSource: "사용 불가",
+  chartStatus: "unavailable",
+  chartDataReason: "과거 시세 데이터를 불러오지 못했습니다.",
+  priceDataSource: "mock",
+  quotePrice: undefined,
+  quoteChangeRate: undefined,
+  priceUpdatedAt: undefined,
+  quoteUpdatedAt: undefined,
+  quoteSource: undefined,
+  isDemoPrice: true,
+  isMarketData: false,
   threeC: { company: "-", customer: "-", competitor: "-" },
   swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] },
+  strategyCommentary: {
+    shortTerm: "-",
+    longTerm: "-",
+    watchPoints: "-",
+    dataNote: "-"
+  },
+  newsStatus: "unavailable",
+  newsStatusMessage: "확인된 뉴스가 없습니다.",
+  newsProvider: "없음",
+  dartStatus: "unavailable",
+  dartStatusMessage: "확인된 DART 공시가 없습니다.",
+  dartProvider: "없음",
   shortComment: "-",
   longComment: "-",
   aiCounterOpinion: [],
   finalComment: "-"
 };
 
-const researchFeatures = ["뉴스 48h", "DART 공시", "재무/밸류에이션", "AI 리스크 코멘트"];
+const researchFeatures = ["뉴스 48h", "최신 DART 공시", "재무/밸류에이션", "AI 리스크 코멘트"];
 
 export function RadarApp() {
   const [activeView, setActiveView] = useState<View>("radar");
   const [candidates, setCandidates] = useState<CandidateStock[]>([]);
   const [recommendMeta, setRecommendMeta] = useState<Omit<RecommendResponse, "candidates">>({
-    generatedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    generatedAt: now,
+    updatedAt: now,
     dataMode: "mock",
     universeCount: 0,
     matchedCount: 0,
@@ -97,16 +123,16 @@ export function RadarApp() {
   });
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [query, setQuery] = useState("삼성전자");
+  const [query, setQuery] = useState("SK하이닉스");
   const [analysis, setAnalysis] = useState<CompanyAnalysis>(emptyAnalysis);
   const [error, setError] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("short");
   const [sectorFilter, setSectorFilter] = useState("전체");
   const [showMethod, setShowMethod] = useState(false);
 
-  const sectors = useMemo(() => ["전체", ...kospiUniverseSectors], []);
+  const sectors = useMemo(() => ["전체", ...kospiUniverseSectors.filter((sector) => sector !== "전체")], []);
   const topCandidate = candidates[0];
-  const sourceCount = Math.max(...candidates.map((item) => item.sourceCount), 0);
+  const sourceCount = Math.max(0, ...candidates.map((item) => item.sourceCount));
 
   const loadRecommendations = async (next?: { sort?: SortMode; sector?: string }) => {
     const sort = next?.sort ?? sortMode;
@@ -133,15 +159,16 @@ export function RadarApp() {
         candidateCount: payload.candidateCount
       });
       setActiveView("radar");
-    } catch {
-      setError("Radar 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+    } catch (fetchError) {
+      console.warn("recommend request failed", fetchError);
+      setError("Radar 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setRecommendLoading(false);
     }
   };
 
   const runAnalysis = async (nextQuery?: string) => {
-    const target = (nextQuery ?? query).trim() || "삼성전자";
+    const target = (nextQuery ?? query).trim() || "SK하이닉스";
     setQuery(target);
     setAnalysisLoading(true);
     setError(null);
@@ -157,8 +184,9 @@ export function RadarApp() {
       if (!response.ok) throw new Error("analyze request failed");
       const payload = (await response.json()) as AnalyzeResponse;
       setAnalysis(payload.analysis);
-    } catch {
-      setError("상세 분석을 생성하지 못했습니다. 데모 데이터를 기준으로 다시 시도해주세요.");
+    } catch (fetchError) {
+      console.warn("analyze request failed", fetchError);
+      setError("상세 분석을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setAnalysisLoading(false);
     }
@@ -166,7 +194,7 @@ export function RadarApp() {
 
   useEffect(() => {
     void loadRecommendations();
-    void runAnalysis("삼성전자");
+    void runAnalysis("SK하이닉스");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -181,7 +209,7 @@ export function RadarApp() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-ink">K-Stock Radar</h1>
-                <p className="text-sm text-zinc-600">국내 주식 뉴스, 공시, 재무, 가격 데이터를 바탕으로 주식 투자 후보를 정리하는 AI Research Agent</p>
+                <p className="text-sm text-zinc-600">국내 주식 뉴스, 공시, 재무, 가격 데이터를 바탕으로 투자 검토 후보를 정리하는 AI 리서치 Agent</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -245,15 +273,7 @@ export function RadarApp() {
           />
         ) : null}
 
-        {activeView === "report" ? (
-          <AnalyzeView
-            analysis={analysis}
-            query={query}
-            loading={analysisLoading}
-            onQueryChange={setQuery}
-            onSubmit={() => void runAnalysis()}
-          />
-        ) : null}
+        {activeView === "report" ? <AnalyzeView analysis={analysis} query={query} loading={analysisLoading} onQueryChange={setQuery} onSubmit={() => void runAnalysis()} /> : null}
       </div>
     </main>
   );
@@ -282,9 +302,9 @@ function CommandCenter({
     <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg shadow-slate-200/60 lg:p-7">
       <div className="mb-5 flex flex-wrap items-center gap-1.5">
         <StatusPill label={dataModeLabel[dataMode]} tone={dataMode === "mock" ? "amber" : "mint"} />
-        <StatusPill label="LLM Ready" tone="mint" />
-        <StatusPill label="DART Ready" tone="slate" />
-        <StatusPill label={`Updated ${generatedAt ? formatDateTime(generatedAt) : "확인 중"}`} tone="slate" quiet />
+        <StatusPill label="LLM 준비" tone="mint" />
+        <StatusPill label="DART 준비" tone="slate" />
+        <StatusPill label={`업데이트 ${generatedAt ? formatDateTime(generatedAt) : "확인 중"}`} tone="slate" quiet />
       </div>
 
       <div className="grid max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
@@ -298,9 +318,7 @@ function CommandCenter({
             <br />
             국내 주식 리서치 Agent
           </h2>
-          <p className="mt-4 max-w-xl text-sm leading-6 text-zinc-600 md:text-base md:leading-7">
-            최근 48시간 이내의 뉴스와 공시 자료를 기반으로 투자 검토 후보를 선별하고, 기업별 리서치 리포트로 핵심 근거와 리스크를 확인해보세요.
-          </p>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-zinc-600 md:text-base md:leading-7">최근 48시간 뉴스는 단기 이슈 탐지에 사용하고, DART는 기간 기준 없이 최신 공식 공시를 확인합니다.</p>
         </div>
 
         <form
@@ -320,7 +338,7 @@ function CommandCenter({
                 id="command-query"
                 value={query}
                 onChange={(event) => onQueryChange(event.target.value)}
-                placeholder="예: 삼성전자 또는 005930"
+                placeholder="예: SK하이닉스 또는 000660"
                 className="min-h-12 w-full rounded-lg border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm font-semibold text-ink outline-none transition placeholder:text-zinc-400 focus:border-marine focus:ring-2 focus:ring-marine/10"
               />
             </div>
@@ -329,11 +347,7 @@ function CommandCenter({
               리포트 생성
             </button>
           </div>
-          <button
-            type="button"
-            onClick={onRadar}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-marine px-5 py-3 text-sm font-bold text-white transition hover:bg-ink"
-          >
+          <button type="button" onClick={onRadar} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-marine px-5 py-3 text-sm font-bold text-white transition hover:bg-ink">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             48시간 Radar 실행
           </button>
@@ -371,16 +385,16 @@ function MethodDisclosure({ open, onToggle }: { open: boolean; onToggle: () => v
       <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
         <span>
           <span className="block text-sm font-bold text-ink">분석 방법 보기</span>
-          <span className="text-xs text-zinc-500">단기 모멘텀, 장기 펀더멘털, 리스크 레벨 산정 기준</span>
+          <span className="text-xs text-zinc-500">단기 모멘텀, 장기 잠재력, 리스크 점수 산정 기준</span>
         </span>
         <ChevronDown className={`h-5 w-5 text-zinc-400 transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open ? (
         <div className="border-t border-zinc-100 px-5 py-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <MethodCard title="단기 모멘텀" body="최근 48시간 뉴스, DART 공시 영향, 주가 추세, 거래량 변화, 이벤트성 재료와 과열 여부를 함께 봅니다." />
-            <MethodCard title="장기 펀더멘털" body="재무 안정성, 성장성, 현금흐름, 산업 전망, 경쟁우위, 밸류에이션, 거버넌스와 지속 가능성을 반영합니다." />
-            <MethodCard title="정성 프레임" body="3C와 SWOT은 점수 산정의 메인이 아니라, 기업 구조와 리스크를 빠르게 이해하기 위한 보조 프레임으로 사용합니다." />
+            <MethodCard title="단기 모멘텀" body="48시간 뉴스, 주요 공시, 가격 흐름, 거래량 변화 등 최근 이벤트 신호를 함께 봅니다." />
+            <MethodCard title="장기 잠재력" body="재무 안정성, 성장성, 경쟁 우위, 밸류에이션, 산업 전망을 반영합니다." />
+            <MethodCard title="리스크 해석" body="리스크 키워드, 가격 변동성, 부정 뉴스, 공시 해석 부담을 종합합니다." />
           </div>
         </div>
       ) : null}
@@ -434,8 +448,10 @@ function RecommendationView({
               <h2 className="text-2xl font-bold text-ink">48시간 Radar</h2>
               <DataModeBadge mode={meta.dataMode} />
             </div>
-            <p className="text-sm leading-6 text-zinc-700">KOSPI Universe를 1차 스크리닝해 최근 데이터상 우선 검토할 후보를 정리합니다. 결과는 리서치 보조용입니다.</p>
-            <p className="mt-2 text-xs font-semibold text-zinc-500">업데이트 {formatDateTime(meta.updatedAt)} · 검토 후보 {meta.candidateCount}개</p>
+            <p className="text-sm leading-6 text-zinc-700">KOSPI Universe를 1차 스크리닝하고, 상위 후보에 한해 실제 현재가와 뉴스/DART 근거를 시도합니다. 가격 호출이 실패하면 가격 영역은 비워 둡니다.</p>
+            <p className="mt-2 text-xs font-semibold text-zinc-500">
+              업데이트 {formatDateTime(meta.updatedAt)} · 검색 후보 {meta.candidateCount}개
+            </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <select value={sectorFilter} onChange={(event) => onSectorChange(event.target.value)} className="min-h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-700" aria-label="업종 필터">
@@ -460,17 +476,17 @@ function RecommendationView({
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricTile label="KOSPI Universe" value={`${meta.universeCount}개`} caption="데모 모드 기준 샘플 상장사" />
-          <MetricTile label="필터 적용" value={`${meta.matchedCount}개`} caption="선택 업종 기준 1차 매칭 결과" />
-          <MetricTile label="최종 검토 후보" value={`${meta.candidateCount}개`} caption="스크리닝 상위 후보만 노출" />
-          <MetricTile label="Last Updated" value={formatDateTime(meta.updatedAt)} caption="최근 생성 시각" />
+          <MetricTile label="KOSPI Universe" value={`${meta.universeCount}개`} caption="스크리닝 대상 표본" />
+          <MetricTile label="필터 적용" value={`${meta.matchedCount}개`} caption="선택 업종 기준 매칭" />
+          <MetricTile label="최종 후보" value={`${meta.candidateCount}개`} caption="상위 후보만 표시" />
+          <MetricTile label="업데이트" value={formatDateTime(meta.updatedAt)} caption="최근 생성 시각" />
         </div>
 
         {topCandidate ? (
           <div className="mt-5 grid gap-4 md:grid-cols-3">
-            <MetricTile label="상위 검토 후보" value={topCandidate.name} caption={`단기 ${topCandidate.shortScore.score} · 장기 ${topCandidate.longScore.score}`} />
+            <MetricTile label="상위 후보" value={topCandidate.name} caption={`단기 ${topCandidate.shortScore.score} · 장기 ${topCandidate.longScore.score}`} />
             <MetricTile label="평균 단기 모멘텀" value={`${averageShort}점`} caption="뉴스·공시·수급 신호 기준" />
-            <MetricTile label="평균 리스크 레벨" value={`${averageRisk}점`} caption="낮을수록 해석 부담이 적음" />
+            <MetricTile label="평균 리스크" value={`${averageRisk}점`} caption="낮을수록 해석 부담이 적음" />
           </div>
         ) : null}
       </section>
@@ -490,7 +506,7 @@ function RecommendationView({
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
         <div className="mb-4 flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-marine" />
-          <h3 className="text-lg font-bold text-ink">검토 후보 비교</h3>
+          <h3 className="text-lg font-bold text-ink">검색 후보 비교</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse text-left text-sm">
@@ -500,38 +516,53 @@ function RecommendationView({
                 <th className="py-3 pr-4">업종</th>
                 <th className="py-3 pr-4">현재가</th>
                 <th className="py-3 pr-4">등락률</th>
-                <th className="py-3 pr-4">단기 모멘텀</th>
-                <th className="py-3 pr-4">장기 펀더멘털</th>
+                <th className="py-3 pr-4">단기</th>
+                <th className="py-3 pr-4">장기</th>
                 <th className="py-3 pr-4">리스크</th>
                 <th className="py-3 pr-4">데이터</th>
                 <th className="py-3 pr-4">리포트</th>
               </tr>
             </thead>
             <tbody>
-              {candidates.map((candidate) => (
-                <tr key={candidate.code} className="border-b border-zinc-100">
-                  <td className="py-3 pr-4">
-                    <p className="font-bold text-ink">{candidate.name}</p>
-                    <p className="text-xs text-zinc-500">{candidate.code}</p>
-                  </td>
-                  <td className="py-3 pr-4 text-zinc-700">{candidate.sector}</td>
-                  <td className="py-3 pr-4 font-semibold text-ink">{formatPrice(candidate.currentPrice)}</td>
-                  <td className={`py-3 pr-4 font-semibold ${candidate.changeRate >= 0 ? "text-rosewood" : "text-marine"}`}>{formatPercent(candidate.changeRate)}</td>
-                  <td className="py-3 pr-4 font-semibold text-ink">{candidate.shortScore.score}</td>
-                  <td className="py-3 pr-4 font-semibold text-ink">{candidate.longScore.score}</td>
-                  <td className="py-3 pr-4">
-                    <RiskBadge value={candidate.riskScore.score} />
-                  </td>
-                  <td className="py-3 pr-4 text-zinc-700">
-                    뉴스 {candidate.newsCount} · 공시 {candidate.disclosureCount} · 출처 {candidate.sourceCount}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <button type="button" onClick={() => onDetail(candidate.name)} className="rounded-md border border-marine px-3 py-2 text-xs font-bold text-marine transition hover:bg-marine hover:text-white">
-                      보기
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {candidates.map((candidate) => {
+                const hasQuote = Boolean(candidate.isMarketData && candidate.quotePrice && candidate.quotePrice > 0);
+                const news48h = candidate.news.filter((item) => item.newsRange === "48h").length;
+                const referenceNews = Math.max(0, candidate.news.length - news48h);
+                const majorDisclosure = candidate.disclosures.filter((item) => item.isMajor).length;
+                return (
+                  <tr key={candidate.code} className="border-b border-zinc-100">
+                    <td className="py-3 pr-4">
+                      <p className="font-bold text-ink">{candidate.name}</p>
+                      <p className="text-xs text-zinc-500">{candidate.code}</p>
+                    </td>
+                    <td className="py-3 pr-4 text-zinc-700">{candidate.sector}</td>
+                    <td className="py-3 pr-4">
+                      {hasQuote ? (
+                        <>
+                          <p className="font-semibold text-ink">{formatPrice(candidate.quotePrice)}</p>
+                          <span className="mt-1 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">지연 시세</span>
+                        </>
+                      ) : (
+                        <p className="text-xs font-semibold text-zinc-400">가격 데이터 없음</p>
+                      )}
+                    </td>
+                    <td className={`py-3 pr-4 font-semibold ${(candidate.quoteChangeRate ?? 0) >= 0 ? "text-rosewood" : "text-marine"}`}>{hasQuote ? formatPercent(candidate.quoteChangeRate) : "-"}</td>
+                    <td className="py-3 pr-4 font-semibold text-ink">{candidate.shortScore.score}</td>
+                    <td className="py-3 pr-4 font-semibold text-ink">{candidate.longScore.score}</td>
+                    <td className="py-3 pr-4">
+                      <RiskBadge value={candidate.riskScore.score} />
+                    </td>
+                    <td className="py-3 pr-4 text-zinc-700">
+                      뉴스 48h {news48h} · 참고 뉴스 {referenceNews} · 최신 공시 {candidate.disclosures.length} · 주요 공시 {majorDisclosure}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <button type="button" onClick={() => onDetail(candidate.name)} className="rounded-md border border-marine px-3 py-2 text-xs font-bold text-marine transition hover:bg-marine hover:text-white">
+                        보기
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -551,19 +582,7 @@ function MetricTile({ label, value, caption }: { label: string; value: string; c
   );
 }
 
-function AnalyzeView({
-  analysis,
-  query,
-  loading,
-  onQueryChange,
-  onSubmit
-}: {
-  analysis: CompanyAnalysis;
-  query: string;
-  loading: boolean;
-  onQueryChange: (value: string) => void;
-  onSubmit: () => void;
-}) {
+function AnalyzeView({ analysis, query, loading, onQueryChange, onSubmit }: { analysis: CompanyAnalysis; query: string; loading: boolean; onQueryChange: (value: string) => void; onSubmit: () => void }) {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-soft">
@@ -616,7 +635,7 @@ function ReportSkeleton() {
       <div className="text-center">
         <Loader2 className="mx-auto h-8 w-8 animate-spin text-marine" />
         <p className="mt-4 font-semibold text-ink">수집한 데이터를 바탕으로 리서치 리포트를 정리하는 중입니다.</p>
-        <p className="mt-2 text-sm text-zinc-600">API 키가 없으면 Demo Mode 리포트로 자동 전환됩니다.</p>
+        <p className="mt-2 text-sm text-zinc-600">가격 데이터가 없으면 현재가 영역은 비우고, 차트는 데이터 없음 상태로 표시합니다.</p>
       </div>
     </section>
   );
@@ -626,8 +645,8 @@ function EmptyState() {
   return (
     <section className="rounded-lg border border-dashed border-zinc-300 bg-white p-8 text-center">
       <Activity className="mx-auto h-8 w-8 text-zinc-400" />
-      <h3 className="mt-3 font-bold text-ink">조건에 맞는 검토 후보가 없습니다.</h3>
-      <p className="mt-2 text-sm text-zinc-600">업종 필터를 전체로 바꾸거나 Radar를 다시 실행해보세요.</p>
+      <h3 className="mt-3 font-bold text-ink">조건에 맞는 검색 후보가 없습니다.</h3>
+      <p className="mt-2 text-sm text-zinc-600">업종 필터를 전체로 바꾸거나 Radar를 다시 실행해 보세요.</p>
     </section>
   );
 }
@@ -644,7 +663,7 @@ function ErrorState({ message }: { message: string }) {
 function SoftNotice() {
   return (
     <div className="mt-4 rounded-lg border border-zinc-200 bg-paper p-3 text-xs font-medium leading-5 text-zinc-600">
-      점수와 코멘트는 최근 뉴스, 공시, 재무, 주가 데이터를 정리한 리서치 요약입니다. 원문 공시와 최신 시세를 함께 확인해 해석하는 흐름을 권장합니다.
+      점수와 코멘트는 뉴스, 공시, 재무, 주가 데이터를 정리한 리서치 보조 자료입니다. 뉴스 원문과 DART 공시 원문을 함께 확인하는 흐름을 권장합니다.
     </div>
   );
 }

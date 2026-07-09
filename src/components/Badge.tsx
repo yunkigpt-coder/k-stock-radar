@@ -15,19 +15,11 @@ const modeStyles: Record<DataMode, string> = {
 };
 
 export function SentimentBadge({ sentiment }: { sentiment: Sentiment }) {
-  return (
-    <span className={clsx("inline-flex items-center rounded-md border px-2 py-1 text-xs font-semibold", sentimentStyles[sentiment])}>
-      {sentimentLabel[sentiment]}
-    </span>
-  );
+  return <span className={clsx("inline-flex items-center rounded-md border px-2 py-1 text-xs font-semibold", sentimentStyles[sentiment])}>{sentimentLabel[sentiment]}</span>;
 }
 
 export function DataModeBadge({ mode }: { mode: DataMode }) {
-  return (
-    <span className={clsx("inline-flex items-center rounded-md border px-2 py-1 text-xs font-semibold", modeStyles[mode])}>
-      {dataModeLabel[mode]}
-    </span>
-  );
+  return <span className={clsx("inline-flex items-center rounded-md border px-2 py-1 text-xs font-semibold", modeStyles[mode])}>{dataModeLabel[mode]}</span>;
 }
 
 export function RiskBadge({ value }: { value: number }) {

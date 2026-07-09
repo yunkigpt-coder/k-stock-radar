@@ -16,20 +16,18 @@ export async function POST(request: Request) {
       confidenceReason: narrative.confidenceReason,
       shortScore: {
         ...company.shortScore,
-        explanation: narrative.shortExplanation
+        explanation: narrative.shortExplanation || company.shortScore.explanation
       },
       longScore: {
         ...company.longScore,
-        explanation: narrative.longExplanation
+        explanation: narrative.longExplanation || company.longScore.explanation
       },
       riskScore: {
         ...company.riskScore,
-        explanation: narrative.riskExplanation
+        explanation: narrative.riskExplanation || company.riskScore.explanation
       },
-      aiCounterOpinion: narrative.aiCounterOpinion,
-      finalComment: narrative.llmUsed
-        ? `${narrative.finalComment} AI 요약은 서버에서 수집한 입력 데이터만을 기준으로 생성됐습니다.`
-        : narrative.finalComment
+      aiCounterOpinion: narrative.aiCounterOpinion.length > 0 ? narrative.aiCounterOpinion : company.aiCounterOpinion,
+      finalComment: narrative.llmUsed ? `${narrative.finalComment} AI 요약은 서버에서 수집된 입력 데이터만 기준으로 생성했습니다.` : narrative.finalComment
     }
   };
 
